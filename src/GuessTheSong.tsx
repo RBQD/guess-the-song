@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useCurrentFrame, AbsoluteFill, staticFile } from 'remotion';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, GROUND_HEIGHT } from './GameEngine';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from './GameEngine';
 
 interface GuessTheSongProps {
     seed?: number;
