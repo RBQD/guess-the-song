@@ -134,15 +134,6 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
             const imgWidth = ballRadius * 4;
             const imgHeight = imgWidth * (590 / 393);
             ctx.drawImage(diddyImage, ball.x - imgWidth / 2, ball.y - imgHeight / 2, imgWidth, imgHeight);
-        } else {
-            // Fallback to white circle if image not loaded
-            ctx.beginPath();
-            ctx.arc(ball.x, ball.y, ballRadius, 0, 2 * Math.PI);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff6b9d';
-            ctx.fill();
-            ctx.shadowBlur = 0;
         }
 
     }, [frame]);
