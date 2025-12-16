@@ -4,16 +4,16 @@ import { CANVAS_WIDTH, CANVAS_HEIGHT } from './GameEngine';
 
 // --- CONFIGURATION ---
 const SONG_START_TIME = 23; // Seconds to skip at start of song
-const NOTES_TO_LOAD = 200; // Number of notes to load into the game
+const NOTES_TO_LOAD = 300; // Number of notes to load into the game
 const NOTES_PER_BOUNCE = 5; // How many notes to play simultaneously on each bounce
 const NOTE_INCREMENT = 5; // How many notes to skip after each bounce
-const BALL_INITIAL_VX = 15; // Higher initial horizontal speed for bigger bounces
-const BALL_INITIAL_VY = 15; // Higher initial vertical speed for bigger bounces
-const GRAVITY = 0.4;
+const BALL_INITIAL_VX = 10; // Higher initial horizontal speed for bigger bounces
+const BALL_INITIAL_VY = 12; // Higher initial vertical speed for bigger bounces
+const GRAVITY = 0.2 ;
 const BALL_RADIUS = 25;
 const CIRCLE_RADIUS = 450;
 const BOUNCINESS = 2.0; // Perfect bounce - maintains same energy/speed
-const HEAD_SCALE_FACTOR = 0.045 ; // How much to scale Diddy's head per bounce
+const HEAD_SCALE_FACTOR = 0.1 ; // How much to scale Diddy's head per bounce
 
 interface Note {
     name: string;
@@ -153,7 +153,7 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const titleY = 280;
 
         // Title: "can you Guess" with "Guess" purple, "the song?" with "song?" purple
-        const lineA_white = 'can you ';
+        const lineA_white = 'Can you ';
         const lineA_purple = 'Guess';
         const lineB_white = 'the ';
         const lineB_purple = 'Song?';
