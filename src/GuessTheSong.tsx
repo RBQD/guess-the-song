@@ -2,6 +2,19 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useCurrentFrame, AbsoluteFill, staticFile } from 'remotion';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './GameEngine';
 
+// --- CONFIGURATION ---
+const SONG_START_TIME = 23; // Seconds to skip at start of song
+const NOTES_TO_LOAD = 200; // Number of notes to load into the game
+const NOTES_PER_BOUNCE = 5; // How many notes to play simultaneously on each bounce
+const NOTE_INCREMENT = 5; // How many notes to skip after each bounce
+const BALL_INITIAL_VX = 15; // Higher initial horizontal speed for bigger bounces
+const BALL_INITIAL_VY = 15; // Higher initial vertical speed for bigger bounces
+const GRAVITY = 0.4;
+const BALL_RADIUS = 25;
+const CIRCLE_RADIUS = 450;
+const BOUNCINESS = 2.0; // Perfect bounce - maintains same energy/speed
+const HEAD_SCALE_FACTOR = 0.045 ; // How much to scale Diddy's head per bounce
+
 interface Note {
     name: string;
     midi: number;
@@ -17,10 +30,11 @@ interface GuessTheSongProps {
 export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
     const frame = useCurrentFrame();
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const ballRef = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 20, vy: -15 });
+    const ballRef = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: BALL_INITIAL_VX, vy: BALL_INITIAL_VY });
     const [diddyImage, setDiddyImage] = useState<HTMLImageElement | null>(null);
     const [notes, setNotes] = useState<Note[]>([]);
     const noteIndexRef = useRef(0);
+    const bounceCountRef = useRef(0);
     const audioCtxRef = useRef<AudioContext | null>(null);
 
     // Load the Diddy image
@@ -35,9 +49,9 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         fetch(staticFile('sounds/VisiPiano.json'))
             .then(res => res.json())
             .then(data => {
-                const notesFrom18 = data.tracks[0].notes.filter((note: Note) => note.time >= 18);
-                const first50 = notesFrom18.slice(0, 50);
-                setNotes(first50);
+                const notesFrom18 = data.tracks[0].notes.filter((note: Note) => note.time >= SONG_START_TIME);
+                const first100 = notesFrom18.slice(0, NOTES_TO_LOAD);
+                setNotes(first100);
             })
             .catch(err => console.error('Failed to load notes:', err));
     }, []);
@@ -98,8 +112,9 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
 
         // Reset ball position and velocity when video restarts (frame 0)
         if (frame === 0) {
-            ballRef.current = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 20, vy: -15 };
+            ballRef.current = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: BALL_INITIAL_VX, vy: BALL_INITIAL_VY };
             noteIndexRef.current = 0;
+            bounceCountRef.current = 0;
             audioCtxRef.current = null;
         }
 
@@ -137,31 +152,48 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const titleX = CANVAS_WIDTH / 2;
         const titleY = 280;
 
-        // Title: "Guess the" (white) + "Song!" (purple with glow)
-        const lineA = 'Guess the ';
-        const lineB = 'Song!';
+        // Title: "can you Guess" with "Guess" purple, "the song?" with "song?" purple
+        const lineA_white = 'can you ';
+        const lineA_purple = 'Guess';
+        const lineB_white = 'the ';
+        const lineB_purple = 'Song?';
 
-        // Measure and draw using left alignment for precise placement while keeping centered layout
+        // Measure and draw using left alignment for precise placement
         ctx.textAlign = 'left';
 
-        // Line placement
-        const full = lineA + lineB;
-        const fullWidth = ctx.measureText(full).width;
-        const startX = titleX - fullWidth / 2;
+        // Line height for spacing
+        const lineHeight = 100;
 
+        // Calculate positions for first line
+        const lineA_full = lineA_white + lineA_purple;
+        const lineA_width = ctx.measureText(lineA_full).width;
+        const lineA_startX = titleX - lineA_width / 2;
+
+        // Draw first line
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(lineA, startX, titleY);
-
+        ctx.fillText(lineA_white, lineA_startX, titleY);
         ctx.fillStyle = '#8a2be2';
         ctx.shadowColor = '#8a2be2';
-        ctx.fillText(lineB, startX + ctx.measureText(lineA).width, titleY);
+        ctx.fillText(lineA_purple, lineA_startX + ctx.measureText(lineA_white).width, titleY);
+
+        // Calculate positions for second line
+        const lineB_full = lineB_white + lineB_purple;
+        const lineB_width = ctx.measureText(lineB_full).width;
+        const lineB_startX = titleX - lineB_width / 2;
+
+        // Draw second line
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(lineB_white, lineB_startX, titleY + lineHeight);
+        ctx.fillStyle = '#8a2be2';
+        ctx.shadowColor = '#8a2be2';
+        ctx.fillText(lineB_purple, lineB_startX + ctx.measureText(lineB_white).width, titleY + lineHeight);
 
         ctx.restore();
 
         // --- CENTER CIRCLE ---
         const centerX = CANVAS_WIDTH / 2;
         const centerY = CANVAS_HEIGHT / 2;
-        const radius = 450;
+        const radius = CIRCLE_RADIUS;
 
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
@@ -174,8 +206,12 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
 
         // --- BALL ---
         const ball = ballRef.current;
-        const ballRadius = 25;
-        const gravity = 0.5;
+        const ballRadius = BALL_RADIUS;
+        const gravity = GRAVITY;
+
+        // Calculate scale for Diddy
+        const scale = 1.2 + bounceCountRef.current * HEAD_SCALE_FACTOR;
+        const effectiveRadius = ballRadius * 2 * scale; // Scale collision radius with head size
 
         // Apply gravity
         ball.vy += gravity;
@@ -188,28 +224,36 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const dx = ball.x - centerX;
         const dy = ball.y - centerY;
         const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist + ballRadius > radius) {
-            // Reflect velocity
+        if (dist + effectiveRadius > radius) {
+            // Reflect velocity with bounciness factor
             const nx = dx / dist;
             const ny = dy / dist;
             const dot = ball.vx * nx + ball.vy * ny;
-            ball.vx -= 2 * dot * nx;
-            ball.vy -= 2 * dot * ny;
+            ball.vx -= BOUNCINESS * dot * nx;
+            ball.vy -= BOUNCINESS * dot * ny;
             // Correct position
-            const overlap = dist + ballRadius - radius;
+            const overlap = dist + effectiveRadius - radius;
             ball.x -= overlap * nx;
             ball.y -= overlap * ny;
 
-            // Play note on bounce
+            // Play 3 notes at once on bounce
             if (notes.length > 0) {
-                playNote(notes[noteIndexRef.current]);
-                noteIndexRef.current = (noteIndexRef.current + 1) % notes.length;
+                // Play current note and the next 2 notes
+                for (let i = 0; i < NOTES_PER_BOUNCE; i++) {
+                    const noteIndex = (noteIndexRef.current + i) % notes.length;
+                    playNote(notes[noteIndex]);
+                }
+                // Advance by 3 notes for next bounce
+                noteIndexRef.current = (noteIndexRef.current + NOTE_INCREMENT) % notes.length;
             }
+            // Increment bounce count
+            bounceCountRef.current++;
         }
 
         // Draw ball (now Diddy image)
         if (diddyImage) {
-            const imgWidth = ballRadius * 4;
+            const scale = 1.2 + bounceCountRef.current * HEAD_SCALE_FACTOR;
+            const imgWidth = ballRadius * 4 * scale;
             const imgHeight = imgWidth * (590 / 393);
             ctx.drawImage(diddyImage, ball.x - imgWidth / 2, ball.y - imgHeight / 2, imgWidth, imgHeight);
         }
