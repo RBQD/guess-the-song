@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { useCurrentFrame, AbsoluteFill } from 'remotion';
+import React, { useRef, useEffect, useState } from 'react';
+import { useCurrentFrame, AbsoluteFill, staticFile } from 'remotion';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, GROUND_HEIGHT } from './GameEngine';
 
 interface GuessTheSongProps {
@@ -10,6 +10,14 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
     const frame = useCurrentFrame();
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const ballRef = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 5, vy: 3 });
+    const [diddyImage, setDiddyImage] = useState<HTMLImageElement | null>(null);
+
+    // Load the Diddy image
+    useEffect(() => {
+        const img = new Image();
+        img.src = staticFile('/images/diddy.png');
+        img.onload = () => setDiddyImage(img);
+    }, []);
 
     // Draw on canvas
     useEffect(() => {
@@ -121,14 +129,21 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
             ball.y -= overlap * ny;
         }
 
-        // Draw ball
-        ctx.beginPath();
-        ctx.arc(ball.x, ball.y, ballRadius, 0, 2 * Math.PI);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#ff6b9d';
-        ctx.fill();
-        ctx.shadowBlur = 0;
+        // Draw ball (now Diddy image)
+        if (diddyImage) {
+            const imgWidth = ballRadius * 4;
+            const imgHeight = imgWidth * (590 / 393);
+            ctx.drawImage(diddyImage, ball.x - imgWidth / 2, ball.y - imgHeight / 2, imgWidth, imgHeight);
+        } else {
+            // Fallback to white circle if image not loaded
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ballRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = '#FFFFFF';
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = '#ff6b9d';
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
 
     }, [frame]);
 
