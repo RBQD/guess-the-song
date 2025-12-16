@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
 import { useCurrentFrame, AbsoluteFill } from 'remotion';
-import { CANVAS_WIDTH, CANVAS_HEIGHT, GROUND_HEIGHT, SPIRAL_TURNS, SPIRAL_START_RADIUS, SPIRAL_END_RADIUS, SPIRAL_ANGLE_OFFSET } from './GameEngine';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, GROUND_HEIGHT } from './GameEngine';
 
 interface GuessTheSongProps {
     seed?: number;
@@ -9,6 +9,7 @@ interface GuessTheSongProps {
 export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
     const frame = useCurrentFrame();
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const ballRef = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 5, vy: 3 });
 
     // Draw on canvas
     useEffect(() => {
@@ -19,153 +20,120 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         if (!ctx) return;
 
         // --- BACKGROUND ---
-        // Create a deep space/night gradient
+        // Create a vibrant music-themed gradient (deep purple to electric blue)
         const bgGradient = ctx.createLinearGradient(0, 0, 0, CANVAS_HEIGHT);
-        bgGradient.addColorStop(0, '#0f2027');
-        bgGradient.addColorStop(0.5, '#203a43');
-        bgGradient.addColorStop(1, '#2c5364');
+        bgGradient.addColorStop(0, '#1a1a2e');
+        bgGradient.addColorStop(0.3, '#16213e');
+        bgGradient.addColorStop(0.7, '#0f3460');
+        bgGradient.addColorStop(1, '#1a1a2e');
         ctx.fillStyle = bgGradient;
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-        // Neon lines on walls
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#4ECDC4';
-        ctx.fillStyle = '#4ECDC4';
-        ctx.fillRect(0, 0, 10, CANVAS_HEIGHT); // Left wall
-        ctx.fillRect(CANVAS_WIDTH - 10, 0, 10, CANVAS_HEIGHT); // Right wall
-        ctx.fillRect(0, 0, CANVAS_WIDTH, 10); // Top wall
-        ctx.shadowBlur = 0; // Reset shadow
-
-        // Wall boundary lines
-        ctx.strokeStyle = 'black';
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = 'black';
-        ctx.beginPath();
-        ctx.moveTo(10, 0);
-        ctx.lineTo(10, CANVAS_HEIGHT);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(CANVAS_WIDTH - 10, 0);
-        ctx.lineTo(CANVAS_WIDTH - 10, CANVAS_HEIGHT);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(0, 10);
-        ctx.lineTo(CANVAS_WIDTH, 10);
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        // --- SPIRAL (smooth, continuous) ---
-        ctx.save();
-
-        // Define spiral parameters (shared with physics)
-        const spiralCenterX = CANVAS_WIDTH / 2 - 30;
-        const spiralCenterY = CANVAS_HEIGHT / 2 + 100;
-        const spiralTurns = SPIRAL_TURNS; // Number of turns
-        const spiralStartRadius = SPIRAL_START_RADIUS; // Opening in the middle
-        const spiralEndRadius = SPIRAL_END_RADIUS; // How far out the spiral goes
-        const spiralPoints = 600;
-
-        // Create gradient for spiral
-        const spiralGradient = ctx.createLinearGradient(
-            spiralCenterX - spiralEndRadius, spiralCenterY - spiralEndRadius,
-            spiralCenterX + spiralEndRadius, spiralCenterY + spiralEndRadius
-        );
-        spiralGradient.addColorStop(0, '#FFD700'); // Gold at center
-        spiralGradient.addColorStop(0.5, '#FFFFFF'); // White in middle
-        spiralGradient.addColorStop(1, '#00BFFF'); // Deep sky blue at outer edge
-
-        ctx.strokeStyle = spiralGradient;
-        ctx.lineWidth = 4;
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        // Add glow effect
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#FFD700';
-
-        ctx.beginPath();
-        for (let i = 0; i <= spiralPoints; i++) {
-            const t = i / spiralPoints;
-            const angle = spiralTurns * 2 * Math.PI * t;
-            const radius = spiralStartRadius + (spiralEndRadius - SPIRAL_START_RADIUS) * t;
-            const x = spiralCenterX - Math.cos(angle) * radius;
-            const y = spiralCenterY + Math.sin(angle) * radius;
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
+        // Add animated sound wave pattern in background
+        ctx.strokeStyle = 'rgba(138, 43, 226, 0.3)'; // Purple waves
+        ctx.lineWidth = 2;
+        for (let i = 0; i < 8; i++) {
+            const y = 200 + i * 150;
+            const amplitude = 30 + Math.sin(frame * 0.05 + i) * 20;
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            for (let x = 0; x < CANVAS_WIDTH; x += 10) {
+                const waveY = y + Math.sin(x * 0.02 + frame * 0.1 + i * 0.5) * amplitude;
+                ctx.lineTo(x, waveY);
             }
+            ctx.stroke();
         }
-        ctx.stroke();
-
-        // Add inner glow for extra sparkle
-        ctx.shadowBlur = 25;
-        ctx.shadowColor = '#FFFFFF';
-        ctx.globalAlpha = 0.3;
-        ctx.stroke();
-
-        ctx.restore();
-
-        // --- GROUND ---
-        const groundY = CANVAS_HEIGHT - GROUND_HEIGHT;
-
-        // Neon line
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#4ECDC4';
-        ctx.fillStyle = '#4ECDC4';
-        ctx.fillRect(0, CANVAS_HEIGHT - 5, CANVAS_WIDTH, 5);
-        ctx.shadowBlur = 0; // Reset shadow
 
         // --- TITLE TEXT ---
         ctx.save();
-        ctx.font = 'bold 80px Arial';
-        ctx.shadowColor = '#4ECDC4';
-        ctx.shadowBlur = 10;
+        ctx.font = 'bold 90px Arial';
+        ctx.shadowColor = '#ff6b9d';
+        ctx.shadowBlur = 15;
 
         const titleX = CANVAS_WIDTH / 2;
-        const titleY1 = 170;
-        const titleY2 = titleY1 + 90;
+        const titleY = 280;
 
-        // We'll draw each line as two parts so only specific words are blue.
-        // Line 1: "Will the " (white) + "ball" (blue)
-        // Line 2: "reach the " (white) + "center?" (blue)
-        const line1A = 'Will the ';
-        const line1B = 'ball';
-        const line2A = 'reach the ';
-        const line2B = 'center?';
+        // Title: "Guess the" (white) + "Song!" (purple with glow)
+        const lineA = 'Guess the ';
+        const lineB = 'Song!';
 
         // Measure and draw using left alignment for precise placement while keeping centered layout
         ctx.textAlign = 'left';
 
-        // Line 1 placement
-        const full1 = line1A + line1B;
-        const full1Width = ctx.measureText(full1).width;
-        const startX1 = titleX - full1Width / 2;
+        // Line placement
+        const full = lineA + lineB;
+        const fullWidth = ctx.measureText(full).width;
+        const startX = titleX - fullWidth / 2;
 
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(line1A, startX1, titleY1);
+        ctx.fillText(lineA, startX, titleY);
 
-        ctx.fillStyle = '#00FFFF';
-        ctx.fillText(line1B, startX1 + ctx.measureText(line1A).width, titleY1);
-
-        // Line 2 placement
-        const full2 = line2A + line2B;
-        const full2Width = ctx.measureText(full2).width;
-        const startX2 = titleX - full2Width / 2;
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(line2A, startX2, titleY2);
-
-        ctx.fillStyle = '#00FFFF';
-        ctx.fillText(line2B, startX2 + ctx.measureText(line2A).width, titleY2);
+        ctx.fillStyle = '#8a2be2';
+        ctx.shadowColor = '#8a2be2';
+        ctx.fillText(lineB, startX + ctx.measureText(lineA).width, titleY);
 
         ctx.restore();
+
+        // --- CENTER CIRCLE ---
+        const centerX = CANVAS_WIDTH / 2;
+        const centerY = CANVAS_HEIGHT / 2;
+        const radius = 450;
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = '#8a2be2';
+        ctx.lineWidth = 6;
+        ctx.shadowBlur = 25;
+        ctx.shadowColor = '#8a2be2';
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // --- BALL ---
+        const ball = ballRef.current;
+        const ballRadius = 25;
+        const gravity = 0.5;
+        const damping = 0.98;
+
+        // Apply gravity
+        ball.vy += gravity;
+
+        // Update ball position
+        ball.x += ball.vx;
+        ball.y += ball.vy;
+
+        // Check collision with circle edge
+        const dx = ball.x - centerX;
+        const dy = ball.y - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist + ballRadius > radius) {
+            // Reflect velocity
+            const nx = dx / dist;
+            const ny = dy / dist;
+            const dot = ball.vx * nx + ball.vy * ny;
+            ball.vx -= 2 * dot * nx;
+            ball.vy -= 2 * dot * ny;
+            // Apply damping
+            ball.vx *= damping;
+            ball.vy *= damping;
+            // Correct position
+            const overlap = dist + ballRadius - radius;
+            ball.x -= overlap * nx;
+            ball.y -= overlap * ny;
+        }
+
+        // Draw ball
+        ctx.beginPath();
+        ctx.arc(ball.x, ball.y, ballRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#ff6b9d';
+        ctx.fill();
+        ctx.shadowBlur = 0;
 
     }, [frame]);
 
     return (
-        <AbsoluteFill style={{ backgroundColor: '#0f2027' }}>
+        <AbsoluteFill style={{ backgroundColor: '#1a1a2e' }}>
             <canvas
                 ref={canvasRef}
                 width={CANVAS_WIDTH}
