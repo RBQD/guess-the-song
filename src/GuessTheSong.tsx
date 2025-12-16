@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useCurrentFrame, AbsoluteFill, staticFile } from 'remotion';
-import { CANVAS_WIDTH, CANVAS_HEIGHT } from './GameEngine';
+import { CANVAS_WIDTH, CANVAS_HEIGHT, GAME_DURATION_FRAMES } from './GameEngine';
 
 // --- CONFIGURATION ---
 const SONG_START_TIME = 23; // Seconds to skip at start of song
@@ -13,7 +13,7 @@ const GRAVITY = 0.2 ;
 const BALL_RADIUS = 25;
 const CIRCLE_RADIUS = 450;
 const BOUNCINESS = 2.0; // Perfect bounce - maintains same energy/speed
-const HEAD_SCALE_FACTOR = 0.1 ; // How much to scale Diddy's head per bounce
+const HEAD_SCALE_FACTOR = 0.111; // How much to scale Diddy's head per bounce
 
 interface Note {
     name: string;
@@ -152,11 +152,13 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const titleX = CANVAS_WIDTH / 2;
         const titleY = 280;
 
-        // Title: "can you Guess" with "Guess" purple, "the song?" with "song?" purple
+        // Title: "Can you Guess" with "Guess" purple, "the Song in Time" with "Song" and "Time" purple
         const lineA_white = 'Can you ';
         const lineA_purple = 'Guess';
-        const lineB_white = 'the ';
-        const lineB_purple = 'Song?';
+        const lineB_white1 = 'the ';
+        const lineB_purple1 = 'Song';
+        const lineB_white2 = ' in ';
+        const lineB_purple2 = 'Time';
 
         // Measure and draw using left alignment for precise placement
         ctx.textAlign = 'left';
@@ -177,16 +179,24 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         ctx.fillText(lineA_purple, lineA_startX + ctx.measureText(lineA_white).width, titleY);
 
         // Calculate positions for second line
-        const lineB_full = lineB_white + lineB_purple;
+        const lineB_full = lineB_white1 + lineB_purple1 + lineB_white2 + lineB_purple2;
         const lineB_width = ctx.measureText(lineB_full).width;
         const lineB_startX = titleX - lineB_width / 2;
 
         // Draw second line
         ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(lineB_white, lineB_startX, titleY + lineHeight);
+        ctx.fillText(lineB_white1, lineB_startX, titleY + lineHeight);
+        const bpos1 = lineB_startX + ctx.measureText(lineB_white1).width;
         ctx.fillStyle = '#8a2be2';
         ctx.shadowColor = '#8a2be2';
-        ctx.fillText(lineB_purple, lineB_startX + ctx.measureText(lineB_white).width, titleY + lineHeight);
+        ctx.fillText(lineB_purple1, bpos1, titleY + lineHeight);
+        const bpos2 = bpos1 + ctx.measureText(lineB_purple1).width;
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillText(lineB_white2, bpos2, titleY + lineHeight);
+        const bpos3 = bpos2 + ctx.measureText(lineB_white2).width;
+        ctx.fillStyle = '#8a2be2';
+        ctx.shadowColor = '#8a2be2';
+        ctx.fillText(lineB_purple2, bpos3, titleY + lineHeight);
 
         ctx.restore();
 
@@ -197,11 +207,69 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
 
         ctx.beginPath();
         ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
-        ctx.strokeStyle = '#8a2be2';
-        ctx.lineWidth = 6;
-        ctx.shadowBlur = 25;
+
+        // Stroke with gradient and enhanced glow
+        const strokeGradient = ctx.createLinearGradient(centerX - radius, centerY, centerX + radius, centerY);
+        strokeGradient.addColorStop(0, '#8a2be2');
+        strokeGradient.addColorStop(0.5, '#ff6b9d');
+        strokeGradient.addColorStop(1, '#8a2be2');
+        ctx.strokeStyle = strokeGradient;
+        ctx.lineWidth = 8;
+        ctx.shadowBlur = 35;
         ctx.shadowColor = '#8a2be2';
         ctx.stroke();
+
+        // Inner stroke for layered effect
+        ctx.strokeStyle = 'rgba(138, 43, 226, 0.6)';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 0;
+        ctx.stroke();
+
+        ctx.shadowBlur = 0;
+
+        // --- PROGRESS BAR ---
+        const progress = Math.min(frame / GAME_DURATION_FRAMES, 1);
+        const barWidth = 800;
+        const barHeight = 30;
+        const barX = (CANVAS_WIDTH - barWidth) / 2;
+        const barY = centerY + radius + 150;
+
+        // Background bar with rounded corners
+        ctx.fillStyle = 'rgba(138, 43, 226, 0.2)';
+        ctx.strokeStyle = 'rgba(138, 43, 226, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, barWidth, barHeight, 15);
+        ctx.fill();
+        ctx.stroke();
+
+        // Progress fill with gradient
+        const progressWidth = barWidth * progress;
+        const gradient = ctx.createLinearGradient(barX, barY, barX + progressWidth, barY);
+        gradient.addColorStop(0, '#8a2be2');
+        gradient.addColorStop(1, '#ff6b9d');
+        ctx.fillStyle = gradient;
+        ctx.shadowColor = '#8a2be2';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.roundRect(barX, barY, progressWidth, barHeight, 15);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        // --- TIMER TEXT ---
+        const elapsedSeconds = Math.floor(frame / 60);
+        const totalSeconds = Math.floor(GAME_DURATION_FRAMES / 60);
+        const elapsedMinutes = Math.floor(elapsedSeconds / 60);
+        const elapsedSecs = elapsedSeconds % 60;
+        const totalMinutes = Math.floor(totalSeconds / 60);
+        const totalSecs = totalSeconds % 60;
+        const timerText = `${elapsedMinutes.toString().padStart(2, '0')}:${elapsedSecs.toString().padStart(2, '0')} / ${totalMinutes.toString().padStart(2, '0')}:${totalSecs.toString().padStart(2, '0')}`;
+        ctx.font = 'bold 40px Arial';
+        ctx.fillStyle = '#FFFFFF';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#8a2be2';
+        ctx.shadowBlur = 10;
+        ctx.fillText(timerText, CANVAS_WIDTH / 2, barY + barHeight + 55);
         ctx.shadowBlur = 0;
 
         // --- BALL ---
