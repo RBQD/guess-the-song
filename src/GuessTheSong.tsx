@@ -2,6 +2,14 @@ import React, { useRef, useEffect, useState } from 'react';
 import { useCurrentFrame, AbsoluteFill, staticFile } from 'remotion';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from './GameEngine';
 
+interface Note {
+    name: string;
+    midi: number;
+    time: number;
+    velocity: number;
+    duration: number;
+}
+
 interface GuessTheSongProps {
     seed?: number;
 }
@@ -9,8 +17,11 @@ interface GuessTheSongProps {
 export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
     const frame = useCurrentFrame();
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const ballRef = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 5, vy: 3 });
+    const ballRef = useRef({ x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 20, vy: -15 });
     const [diddyImage, setDiddyImage] = useState<HTMLImageElement | null>(null);
+    const [notes, setNotes] = useState<Note[]>([]);
+    const noteIndexRef = useRef(0);
+    const audioCtxRef = useRef<AudioContext | null>(null);
 
     // Load the Diddy image
     useEffect(() => {
@@ -19,6 +30,64 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         img.onload = () => setDiddyImage(img);
     }, []);
 
+    // Load notes from JSON
+    useEffect(() => {
+        fetch(staticFile('sounds/VisiPiano.json'))
+            .then(res => res.json())
+            .then(data => {
+                const notesFrom18 = data.tracks[0].notes.filter((note: Note) => note.time >= 18);
+                const first50 = notesFrom18.slice(0, 50);
+                setNotes(first50);
+            })
+            .catch(err => console.error('Failed to load notes:', err));
+    }, []);
+
+    const playNote = (note: Note) => {
+        if (!audioCtxRef.current) {
+            audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        const ctx = audioCtxRef.current;
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        const gain2 = ctx.createGain();
+        const masterGain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc1.connect(gain1);
+        osc2.connect(gain2);
+        gain1.connect(masterGain);
+        gain2.connect(masterGain);
+        masterGain.connect(filter);
+        filter.connect(ctx.destination);
+
+        osc1.type = 'sawtooth';
+        osc2.type = 'sawtooth';
+        const freq = 440 * Math.pow(2, (note.midi - 69) / 12);
+        osc1.frequency.setValueAtTime(freq, ctx.currentTime);
+        osc2.frequency.setValueAtTime(freq * 2, ctx.currentTime); // octave
+
+        // Low-pass filter
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(freq * 6, ctx.currentTime);
+        filter.Q.setValueAtTime(2, ctx.currentTime);
+
+        // Gains
+        gain1.gain.setValueAtTime(note.velocity * 0.7, ctx.currentTime);
+        gain2.gain.setValueAtTime(note.velocity * 0.3, ctx.currentTime);
+
+        // Envelope on master
+        masterGain.gain.setValueAtTime(0, ctx.currentTime);
+        masterGain.gain.linearRampToValueAtTime(1, ctx.currentTime + 0.01);
+        masterGain.gain.exponentialRampToValueAtTime(0.3, ctx.currentTime + note.duration * 0.2);
+        masterGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + note.duration);
+
+        osc1.start(ctx.currentTime);
+        osc2.start(ctx.currentTime);
+        osc1.stop(ctx.currentTime + note.duration);
+        osc2.stop(ctx.currentTime + note.duration);
+    };
+
     // Draw on canvas
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -26,6 +95,13 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
 
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
+
+        // Reset ball position and velocity when video restarts (frame 0)
+        if (frame === 0) {
+            ballRef.current = { x: CANVAS_WIDTH / 2, y: CANVAS_HEIGHT / 2, vx: 20, vy: -15 };
+            noteIndexRef.current = 0;
+            audioCtxRef.current = null;
+        }
 
         // --- BACKGROUND ---
         // Create a vibrant music-themed gradient (deep purple to electric blue)
@@ -100,7 +176,6 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const ball = ballRef.current;
         const ballRadius = 25;
         const gravity = 0.5;
-        const damping = 0.98;
 
         // Apply gravity
         ball.vy += gravity;
@@ -120,13 +195,16 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
             const dot = ball.vx * nx + ball.vy * ny;
             ball.vx -= 2 * dot * nx;
             ball.vy -= 2 * dot * ny;
-            // Apply damping
-            ball.vx *= damping;
-            ball.vy *= damping;
             // Correct position
             const overlap = dist + ballRadius - radius;
             ball.x -= overlap * nx;
             ball.y -= overlap * ny;
+
+            // Play note on bounce
+            if (notes.length > 0) {
+                playNote(notes[noteIndexRef.current]);
+                noteIndexRef.current = (noteIndexRef.current + 1) % notes.length;
+            }
         }
 
         // Draw ball (now Diddy image)
