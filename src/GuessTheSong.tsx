@@ -158,7 +158,7 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const lineB_white1 = 'the ';
         const lineB_purple1 = 'Song';
         const lineB_white2 = ' in ';
-        const lineB_purple2 = 'Time';
+        const lineB_purple2 = 'Time?';
 
         // Measure and draw using left alignment for precise placement
         ctx.textAlign = 'left';
@@ -232,7 +232,7 @@ export const GuessTheSong: React.FC<GuessTheSongProps> = ({ seed = 12345 }) => {
         const barWidth = 800;
         const barHeight = 30;
         const barX = (CANVAS_WIDTH - barWidth) / 2;
-        const barY = centerY + radius + 150;
+        const barY = centerY + radius + 140;
 
         // Background bar with rounded corners
         ctx.fillStyle = 'rgba(138, 43, 226, 0.2)';
