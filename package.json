@@ -1,0 +1,26 @@
+{
+  "name": "bounce-game-remotion",
+  "version": "1.0.0",
+  "description": "Bounce Game captured with Remotion",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render GuessTheSong out/video.mp4 --codec=h264 --video-bitrate=12M --audio-bitrate=384k --pixel-format=yuv420p",
+    "upgrade": "remotion upgrade",
+    "preview": "remotion preview"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "@remotion/player": "^4.0.0",
+    "matter-js": "^0.19.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/matter-js": "^0.19.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "prettier": "^3.0.0",
+    "typescript": "^5.0.0"
+  }
+}
